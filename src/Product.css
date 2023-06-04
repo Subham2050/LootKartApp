@@ -1,0 +1,8 @@
+.card-image-container {
+  height: 300px;
+}
+.card-image-container img {
+  max-height: 100%;
+  max-width: 100%;
+  object-fit: contain;
+}
