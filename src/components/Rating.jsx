@@ -1,66 +1,69 @@
 import React from "react";
 
-function Rating({ value, text, color }) {
+function Rating({ value = 0, text, color = "#f8b800" }) {
+  const numericValue = Number(value) || 0;
+
   return (
-    <div className="rating">
-      <span>
+    <div className="rating d-flex align-items-center">
+      <span className="me-1">
         <i
           style={{ color }}
           className={
-            value >= 1
+            numericValue >= 1
               ? "fas fa-star"
-              : value >= 0.5
+              : numericValue >= 0.5
               ? "fas fa-star-half-alt"
               : "far fa-star"
           }></i>
       </span>
-      <span>
+      <span className="me-1">
         <i
           style={{ color }}
           className={
-            value >= 2
+            numericValue >= 2
               ? "fas fa-star"
-              : value >= 1.5
+              : numericValue >= 1.5
               ? "fas fa-star-half-alt"
               : "far fa-star"
           }></i>
       </span>
-      <span>
+      <span className="me-1">
         <i
           style={{ color }}
           className={
-            value >= 3
+            numericValue >= 3
               ? "fas fa-star"
-              : value >= 2.5
+              : numericValue >= 2.5
               ? "fas fa-star-half-alt"
               : "far fa-star"
           }></i>
       </span>
-      <span>
+      <span className="me-1">
         <i
           style={{ color }}
           className={
-            value >= 4
+            numericValue >= 4
               ? "fas fa-star"
-              : value >= 3.5
+              : numericValue >= 3.5
               ? "fas fa-star-half-alt"
               : "far fa-star"
           }></i>
       </span>
-      <span>
+      <span className="me-2">
         <i
           style={{ color }}
           className={
-            value >= 5
+            numericValue >= 5
               ? "fas fa-star"
-              : value >= 4.5
+              : numericValue >= 4.5
               ? "fas fa-star-half-alt"
               : "far fa-star"
           }></i>
       </span>
-      <span>{text && text}</span>
+      {text && <span className="ms-1 text-muted small">{text}</span>}
     </div>
   );
 }
 
 export default Rating;
+
