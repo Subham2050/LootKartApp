@@ -7,4 +7,16 @@ export default defineConfig({
     port: 3000,
     open: true,
   },
+  build: {
+    sourcemap: false,
+    minify: 'esbuild',
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'react-vendor': ['react', 'react-dom', 'react-router-dom'],
+          'bootstrap-vendor': ['react-bootstrap', 'bootstrap'],
+        },
+      },
+    },
+  },
 });

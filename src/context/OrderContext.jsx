@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
+import { useAuth } from "./AuthContext";
 
 const OrderContext = createContext();
 
@@ -11,30 +12,45 @@ export const useOrders = () => {
 };
 
 export const OrderProvider = ({ children }) => {
-  const [orders, setOrders] = useState(() => {
-    try {
-      const stored = localStorage.getItem("lootkart_orders");
-      return stored ? JSON.parse(stored) : [];
-    } catch (e) {
-      console.error("Failed to parse orders", e);
-      return [];
-    }
-  });
+  const { user } = useAuth();
 
+  const getStorageKey = () => {
+    return user ? `lootkart_orders_${user.email}` : "lootkart_orders_guest";
+  };
+
+  const [orders, setOrders] = useState([]);
+
+  // Sync orders whenever logged-in user changes
   useEffect(() => {
-    try {
-      localStorage.setItem("lootkart_orders", JSON.stringify(orders));
-    } catch (e) {
-      console.error("Failed to save orders", e);
+    if (!user) {
+      setOrders([]);
+      return;
     }
-  }, [orders]);
+    try {
+      const stored = localStorage.getItem(getStorageKey());
+      setOrders(stored ? JSON.parse(stored) : []);
+    } catch (e) {
+      console.error("Failed to parse user orders", e);
+      setOrders([]);
+    }
+  }, [user]);
+
+  // Persist orders on change
+  useEffect(() => {
+    if (!user) return;
+    try {
+      localStorage.setItem(getStorageKey(), JSON.stringify(orders));
+    } catch (e) {
+      console.error("Failed to save user orders", e);
+    }
+  }, [orders, user]);
 
   const addOrder = (orderData) => {
     const newOrder = {
       id: "LK-" + Math.floor(100000 + Math.random() * 900000),
       createdAt: new Date().toISOString(),
       status: "In Transit",
-      step: 2, // 1: Placed, 2: Shipped/In Transit, 3: Out for Delivery, 4: Delivered
+      step: 2,
       estimatedDelivery: "Tomorrow by 8:00 PM",
       ...orderData,
     };
