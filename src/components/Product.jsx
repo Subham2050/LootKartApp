@@ -1,5 +1,5 @@
 import React from "react";
-import { Card, Button, Badge } from "react-bootstrap";
+import { Card, Button } from "react-bootstrap";
 import Rating from "./Rating";
 import { Link } from "react-router-dom";
 import { formatINR } from "../utils/formatCurrency";
@@ -11,8 +11,8 @@ function Product({ product, onToast }) {
   const { addToCart } = useCart();
   const { toggleWishlist, isInWishlist } = useWishlist();
 
-  const ratingValue = typeof product.rating === "object" ? product.rating?.rate : product.rating;
-  const reviewCount = typeof product.rating === "object" ? product.rating?.count : (product.numReviews || 0);
+  const ratingValue = typeof product.rating === "object" ? product.rating?.rate : (product.rating_rate || product.rating);
+  const reviewCount = typeof product.rating === "object" ? product.rating?.count : (product.rating_count || product.numReviews || 0);
   const title = product.title || product.name || "Product";
   const isWishlisted = isInWishlist(product.id);
 
@@ -28,14 +28,18 @@ function Product({ product, onToast }) {
   const handleWishlistClick = (e) => {
     e.preventDefault();
     e.stopPropagation();
-    toggleWishlist(product);
+    const success = toggleWishlist(product);
     if (onToast) {
-      onToast(
-        isWishlisted
-          ? `Removed from Wishlist`
-          : `Added to Wishlist!`,
-        isWishlisted ? "warning" : "danger"
-      );
+      if (!success) {
+        onToast("Please login to save items to your wishlist!", "info");
+      } else {
+        onToast(
+          isWishlisted
+            ? `Removed from Wishlist`
+            : `Added to Wishlist!`,
+          isWishlisted ? "warning" : "danger"
+        );
+      }
     }
   };
 
@@ -57,7 +61,7 @@ function Product({ product, onToast }) {
 
       {/* Image Container */}
       <div className="card-image-container p-3 d-flex align-items-center justify-content-center bg-white">
-        <Link to={`/products/${product.id}`}>
+        <Link to={`/products/${product.id}`} state={{ product }}>
           <Card.Img
             variant="top"
             src={product.image}
@@ -71,9 +75,9 @@ function Product({ product, onToast }) {
       <Card.Body className="d-flex flex-column justify-content-between p-3">
         <div>
           <div className="text-uppercase text-muted extra-small fw-bold mb-1" style={{ fontSize: "0.72rem" }}>
-            {product.category || "Electronics"}
+            {product.category || "Fashion"}
           </div>
-          <Link to={`/products/${product.id}`} style={{ textDecoration: "none" }}>
+          <Link to={`/products/${product.id}`} state={{ product }} style={{ textDecoration: "none" }}>
             <Card.Title as="div" className="product-title font-weight-bold text-dark mb-2">
               <strong>{title}</strong>
             </Card.Title>

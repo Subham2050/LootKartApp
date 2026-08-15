@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
+import { useAuth } from "./AuthContext";
 
 const WishlistContext = createContext();
 
@@ -11,25 +12,43 @@ export const useWishlist = () => {
 };
 
 export const WishlistProvider = ({ children }) => {
-  const [wishlistItems, setWishlistItems] = useState(() => {
-    try {
-      const stored = localStorage.getItem("wishlistItems");
-      return stored ? JSON.parse(stored) : [];
-    } catch (e) {
-      console.error("Failed to parse wishlistItems", e);
-      return [];
-    }
-  });
+  const { user } = useAuth();
 
+  const getStorageKey = () => {
+    return user ? `wishlistItems_${user.email}` : "wishlistItems_guest";
+  };
+
+  const [wishlistItems, setWishlistItems] = useState([]);
+
+  // Sync wishlist whenever user logs in or out
   useEffect(() => {
-    try {
-      localStorage.setItem("wishlistItems", JSON.stringify(wishlistItems));
-    } catch (e) {
-      console.error("Failed to save wishlistItems", e);
+    if (!user) {
+      setWishlistItems([]);
+      return;
     }
-  }, [wishlistItems]);
+    try {
+      const stored = localStorage.getItem(getStorageKey());
+      setWishlistItems(stored ? JSON.parse(stored) : []);
+    } catch (e) {
+      console.error("Failed to parse user wishlistItems", e);
+      setWishlistItems([]);
+    }
+  }, [user]);
+
+  // Save wishlist on update
+  useEffect(() => {
+    if (!user) return;
+    try {
+      localStorage.setItem(getStorageKey(), JSON.stringify(wishlistItems));
+    } catch (e) {
+      console.error("Failed to save user wishlistItems", e);
+    }
+  }, [wishlistItems, user]);
 
   const toggleWishlist = (product) => {
+    if (!user) {
+      return false; // Triggers login prompt
+    }
     setWishlistItems((prev) => {
       const exists = prev.some((item) => item.id === product.id);
       if (exists) {
@@ -45,13 +64,15 @@ export const WishlistProvider = ({ children }) => {
         return [...prev, normalized];
       }
     });
+    return true;
   };
 
   const isInWishlist = (id) => {
+    if (!user) return false;
     return wishlistItems.some((item) => item.id === id);
   };
 
-  const wishlistCount = wishlistItems.length;
+  const wishlistCount = user ? wishlistItems.length : 0;
 
   return (
     <WishlistContext.Provider
