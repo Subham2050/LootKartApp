@@ -1,5 +1,5 @@
 import React from "react";
-import { Card, Button, Badge } from "react-bootstrap";
+import { Card, Button } from "react-bootstrap";
 import Rating from "./Rating";
 import { Link } from "react-router-dom";
 import { formatINR } from "../utils/formatCurrency";
@@ -61,7 +61,7 @@ function Product({ product, onToast }) {
 
       {/* Image Container */}
       <div className="card-image-container p-3 d-flex align-items-center justify-content-center bg-white">
-        <Link to={`/products/${product.id}`}>
+        <Link to={`/products/${product.id}`} state={{ product }}>
           <Card.Img
             variant="top"
             src={product.image}
@@ -77,7 +77,7 @@ function Product({ product, onToast }) {
           <div className="text-uppercase text-muted extra-small fw-bold mb-1" style={{ fontSize: "0.72rem" }}>
             {product.category || "Fashion"}
           </div>
-          <Link to={`/products/${product.id}`} style={{ textDecoration: "none" }}>
+          <Link to={`/products/${product.id}`} state={{ product }} style={{ textDecoration: "none" }}>
             <Card.Title as="div" className="product-title font-weight-bold text-dark mb-2">
               <strong>{title}</strong>
             </Card.Title>

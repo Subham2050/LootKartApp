@@ -1,13 +1,24 @@
 import axios from "axios";
 
-const API_BASE_URL = "http://localhost:8085/api";
+const getApiBaseUrl = () => {
+  if (typeof window !== "undefined" && window.location) {
+    const host = window.location.hostname;
+    if (host !== "localhost" && host !== "127.0.0.1") {
+      // If accessed via local IP (e.g. 192.168.x.x), target the backend on the same host IP
+      if (/^\d+\.\d+\.\d+\.\d+$/.test(host)) {
+        return `http://${host}:8085/api`;
+      }
+    }
+  }
+  return "http://localhost:8085/api";
+};
 
 const api = axios.create({
-  baseURL: API_BASE_URL,
+  baseURL: getApiBaseUrl(),
   headers: {
     "Content-Type": "application/json",
   },
-  timeout: 8000,
+  timeout: 5000,
 });
 
 // Request Interceptor: Attach JWT Token & Idempotency Key
@@ -47,11 +58,11 @@ api.interceptors.response.use(
 
     const isRetryable = !response || (response.status >= 500 && response.status < 600);
 
-    if (isRetryable && config.retryCount < 2) {
+    if (isRetryable && config.retryCount < 1) {
       config.retryCount += 1;
-      const delay = Math.pow(2, config.retryCount) * 500;
+      const delay = 500;
       await new Promise((resolve) => setTimeout(resolve, delay));
-      console.warn(`Retrying API request (${config.retryCount}/2): ${config.url}`);
+      console.warn(`Retrying API request (${config.retryCount}/1): ${config.url}`);
       return api(config);
     }
 

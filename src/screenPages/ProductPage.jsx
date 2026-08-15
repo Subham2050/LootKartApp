@@ -4,7 +4,6 @@ import {
   Col,
   Image,
   Container,
-  ListGroup,
   Button,
   Form,
   Spinner,
@@ -15,7 +14,7 @@ import {
   Modal,
 } from "react-bootstrap";
 import Rating from "../components/Rating";
-import { Link, useParams, useNavigate } from "react-router-dom";
+import { Link, useParams, useLocation, useNavigate } from "react-router-dom";
 import api from "../services/api";
 import axios from "axios";
 import { useCart } from "../context/CartContext";
@@ -25,12 +24,16 @@ import CheckoutModal from "../components/CheckoutModal";
 
 function ProductPage({ onToast }) {
   const { id } = useParams();
+  const location = useLocation();
   const navigate = useNavigate();
   const { addToCart, cartItems, totalPrice, clearCart } = useCart();
   const { toggleWishlist, isInWishlist } = useWishlist();
 
-  const [product, setProduct] = useState(null);
-  const [loading, setLoading] = useState(true);
+  // Initialize product state from router location state if passed from catalog card
+  const initialProduct = location.state?.product || null;
+
+  const [product, setProduct] = useState(initialProduct);
+  const [loading, setLoading] = useState(!initialProduct);
   const [error, setError] = useState(null);
   const [qty, setQty] = useState(1);
   const [showCheckout, setShowCheckout] = useState(false);
@@ -60,24 +63,38 @@ function ProductPage({ onToast }) {
 
     const loadProduct = async () => {
       try {
-        setLoading(true);
+        if (!initialProduct) {
+          setLoading(true);
+        }
         setError(null);
         
         // 1. Fetch from FastAPI backend
         try {
           const res = await api.get(`/products/${id}`);
-          if (isMounted) {
+          if (isMounted && res.data) {
             setProduct(res.data);
           }
         } catch (backendErr) {
-          console.warn("Backend product endpoint unavailable, using FakeStore fallback", backendErr);
-          const fallbackRes = await axios.get(`https://fakestoreapi.com/products/${id}`);
-          if (isMounted) {
-            setProduct(fallbackRes.data);
+          console.warn("Backend API unavailable for product details", backendErr);
+          
+          // Only attempt FakeStore API for legacy IDs 1-20
+          if (Number(id) <= 20) {
+            try {
+              const fallbackRes = await axios.get(`https://fakestoreapi.com/products/${id}`);
+              if (isMounted && fallbackRes.data) {
+                setProduct(fallbackRes.data);
+              }
+            } catch (fallbackErr) {
+              console.warn("FakeStore fallback failed", fallbackErr);
+            }
+          }
+          
+          if (isMounted && !product && !initialProduct) {
+            setError("Could not load product details. Please ensure the backend server is running.");
           }
         }
       } catch (err) {
-        if (isMounted) {
+        if (isMounted && !product && !initialProduct) {
           setError(err.message || "Failed to load product details");
         }
       } finally {
@@ -159,13 +176,13 @@ function ProductPage({ onToast }) {
         <i className="fas fa-arrow-left me-2"></i>Back to Catalog
       </Link>
 
-      {loading ? (
+      {loading && !product ? (
         <div className="text-center my-5 py-5">
           <Spinner animation="border" variant="primary" role="status">
             <span className="visually-hidden">Loading product...</span>
           </Spinner>
         </div>
-      ) : error ? (
+      ) : error && !product ? (
         <Alert variant="danger" className="my-4 shadow-sm">
           <Alert.Heading>Error</Alert.Heading>
           <p>{error}</p>
