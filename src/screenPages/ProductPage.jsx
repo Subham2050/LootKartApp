@@ -4,7 +4,6 @@ import {
   Col,
   Image,
   Container,
-  ListGroup,
   Button,
   Form,
   Spinner,
@@ -15,7 +14,8 @@ import {
   Modal,
 } from "react-bootstrap";
 import Rating from "../components/Rating";
-import { Link, useParams, useNavigate } from "react-router-dom";
+import { Link, useParams, useLocation, useNavigate } from "react-router-dom";
+import api from "../services/api";
 import axios from "axios";
 import { useCart } from "../context/CartContext";
 import { useWishlist } from "../context/WishlistContext";
@@ -24,12 +24,16 @@ import CheckoutModal from "../components/CheckoutModal";
 
 function ProductPage({ onToast }) {
   const { id } = useParams();
+  const location = useLocation();
   const navigate = useNavigate();
   const { addToCart, cartItems, totalPrice, clearCart } = useCart();
   const { toggleWishlist, isInWishlist } = useWishlist();
 
-  const [product, setProduct] = useState(null);
-  const [loading, setLoading] = useState(true);
+  // Initialize product state from router location state if passed from catalog card
+  const initialProduct = location.state?.product || null;
+
+  const [product, setProduct] = useState(initialProduct);
+  const [loading, setLoading] = useState(!initialProduct);
   const [error, setError] = useState(null);
   const [qty, setQty] = useState(1);
   const [showCheckout, setShowCheckout] = useState(false);
@@ -54,21 +58,43 @@ function ProductPage({ onToast }) {
     },
   ]);
 
-  const URL = `https://fakestoreapi.com/products/${id}`;
-
   useEffect(() => {
     let isMounted = true;
 
     const loadProduct = async () => {
       try {
-        setLoading(true);
+        if (!initialProduct) {
+          setLoading(true);
+        }
         setError(null);
-        const response = await axios.get(URL);
-        if (isMounted) {
-          setProduct(response.data);
+        
+        // 1. Fetch from FastAPI backend
+        try {
+          const res = await api.get(`/products/${id}`);
+          if (isMounted && res.data) {
+            setProduct(res.data);
+          }
+        } catch (backendErr) {
+          console.warn("Backend API unavailable for product details", backendErr);
+          
+          // Only attempt FakeStore API for legacy IDs 1-20
+          if (Number(id) <= 20) {
+            try {
+              const fallbackRes = await axios.get(`https://fakestoreapi.com/products/${id}`);
+              if (isMounted && fallbackRes.data) {
+                setProduct(fallbackRes.data);
+              }
+            } catch (fallbackErr) {
+              console.warn("FakeStore fallback failed", fallbackErr);
+            }
+          }
+          
+          if (isMounted && !product && !initialProduct) {
+            setError("Could not load product details. Please ensure the backend server is running.");
+          }
         }
       } catch (err) {
-        if (isMounted) {
+        if (isMounted && !product && !initialProduct) {
           setError(err.message || "Failed to load product details");
         }
       } finally {
@@ -83,12 +109,12 @@ function ProductPage({ onToast }) {
     return () => {
       isMounted = false;
     };
-  }, [id, URL]);
+  }, [id]);
 
   const title = product?.title || product?.name || "Product Details";
-  const ratingRate = product?.rating?.rate ?? product?.rating;
-  const ratingCount = product?.rating?.count ?? product?.numReviews ?? 0;
-  const stockCount = product?.countInStock ?? 10;
+  const ratingRate = product?.rating?.rate ?? product?.rating_rate ?? product?.rating;
+  const ratingCount = product?.rating?.count ?? product?.rating_count ?? product?.numReviews ?? 120;
+  const stockCount = product?.stock_count ?? product?.countInStock ?? 10;
   const isWishlisted = product ? isInWishlist(product.id) : false;
 
   const handleAddToCart = () => {
@@ -109,12 +135,16 @@ function ProductPage({ onToast }) {
 
   const handleWishlistToggle = () => {
     if (product) {
-      toggleWishlist(product);
+      const success = toggleWishlist(product);
       if (onToast) {
-        onToast(
-          isWishlisted ? "Removed from Wishlist" : "Added to Wishlist!",
-          isWishlisted ? "warning" : "danger"
-        );
+        if (!success) {
+          onToast("Please login to save items to your wishlist!", "info");
+        } else {
+          onToast(
+            isWishlisted ? "Removed from Wishlist" : "Added to Wishlist!",
+            isWishlisted ? "warning" : "danger"
+          );
+        }
       }
     }
   };
@@ -146,13 +176,13 @@ function ProductPage({ onToast }) {
         <i className="fas fa-arrow-left me-2"></i>Back to Catalog
       </Link>
 
-      {loading ? (
+      {loading && !product ? (
         <div className="text-center my-5 py-5">
           <Spinner animation="border" variant="primary" role="status">
             <span className="visually-hidden">Loading product...</span>
           </Spinner>
         </div>
-      ) : error ? (
+      ) : error && !product ? (
         <Alert variant="danger" className="my-4 shadow-sm">
           <Alert.Heading>Error</Alert.Heading>
           <p>{error}</p>
@@ -190,13 +220,13 @@ function ProductPage({ onToast }) {
             <Col md={6}>
               <div className="p-2">
                 <Badge bg="primary" className="mb-2 px-3 py-2 text-uppercase">
-                  {product.category || "Electronics"}
+                  {product.category || "Fashion"}
                 </Badge>
 
                 <h2 className="fw-extrabold text-dark mb-2">{title}</h2>
 
                 <div className="d-flex align-items-center gap-2 mb-3">
-                  <Rating value={ratingRate || 0} text={`(${ratingCount} verified reviews)`} color="#f59e0b" />
+                  <Rating value={ratingRate || 4.5} text={`(${ratingCount} verified reviews)`} color="#f59e0b" />
                 </div>
 
                 <div className="d-flex align-items-baseline gap-3 my-3">

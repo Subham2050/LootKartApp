@@ -2,9 +2,11 @@ import React from "react";
 import { Container, Row, Col, Card, Badge, Alert, Button, Image } from "react-bootstrap";
 import { Link } from "react-router-dom";
 import { useOrders } from "../context/OrderContext";
+import { useAuth } from "../context/AuthContext";
 import { formatINR } from "../utils/formatCurrency";
 
 function OrdersPage() {
+  const { user } = useAuth();
   const { orders } = useOrders();
 
   const getStepClass = (currentStep, targetStep) => {
@@ -12,6 +14,31 @@ function OrdersPage() {
     if (currentStep === targetStep) return "active";
     return "";
   };
+
+  // If user is not logged in, prompt login
+  if (!user) {
+    return (
+      <Container className="my-5 text-center" style={{ maxWidth: "550px" }}>
+        <Card className="shadow-lg border-0 rounded-4 p-4 my-4">
+          <div className="display-1 text-primary mb-3">
+            <i className="fas fa-lock"></i>
+          </div>
+          <h3 className="fw-extrabold text-dark mb-2">Please Login to View Your Orders</h3>
+          <p className="text-muted mb-4">
+            Your order history, tracking details, and receipts are securely linked to your account.
+          </p>
+          <div className="d-grid gap-2">
+            <Link to="/login" className="btn btn-primary btn-lg rounded-pill fw-bold">
+              <i className="fas fa-right-to-bracket me-2"></i>Login / Register Now
+            </Link>
+            <Link to="/" className="btn btn-outline-secondary rounded-pill fw-bold mt-2">
+              Continue Browsing Products
+            </Link>
+          </div>
+        </Card>
+      </Container>
+    );
+  }
 
   return (
     <Container className="my-4">

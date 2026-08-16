@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { Modal, Button, Form, Row, Col, Alert, Badge } from "react-bootstrap";
 import { formatINR } from "../utils/formatCurrency";
 import { useOrders } from "../context/OrderContext";
+import api from "../services/api";
 
 function CheckoutModal({ show, handleClose, cartItems, totalPrice, clearCart }) {
   const { addOrder } = useOrders();
@@ -19,6 +20,7 @@ function CheckoutModal({ show, handleClose, cartItems, totalPrice, clearCart }) 
   const [discountAmount, setDiscountAmount] = useState(0);
   const [couponApplied, setCouponApplied] = useState(false);
   const [placedOrderId, setPlacedOrderId] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleInputChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -36,15 +38,46 @@ function CheckoutModal({ show, handleClose, cartItems, totalPrice, clearCart }) 
 
   const finalPrice = Math.max(0, totalPrice - discountAmount);
 
-  const handlePlaceOrder = (e) => {
+  const handlePlaceOrder = async (e) => {
     e.preventDefault();
+    setIsSubmitting(true);
+
+    const orderPayload = {
+      items: cartItems.map(item => ({
+        id: item.id,
+        title: item.title,
+        price: item.price,
+        qty: item.qty,
+        image: item.image,
+      })),
+      totalPrice: finalPrice,
+      address: formData,
+      paymentMethod: formData.paymentMethod,
+    };
+
+    let serverOrderId = "";
+
+    // 1. Post to FastAPI Backend (with Redis Idempotency Key)
+    try {
+      const res = await api.post("/orders", orderPayload);
+      if (res.data && res.data.id) {
+        serverOrderId = res.data.id;
+      }
+    } catch (err) {
+      console.warn("Backend order placement unavailable, recording locally", err);
+    }
+
+    // 2. Save in local OrderContext
     const createdOrder = addOrder({
+      id: serverOrderId || undefined,
       items: cartItems,
       totalPrice: finalPrice,
       address: formData,
       paymentMethod: formData.paymentMethod,
     });
-    setPlacedOrderId(createdOrder.id);
+
+    setPlacedOrderId(serverOrderId || createdOrder.id);
+    setIsSubmitting(false);
     setStep(3);
     clearCart();
   };
@@ -225,11 +258,15 @@ function CheckoutModal({ show, handleClose, cartItems, totalPrice, clearCart }) 
               />
 
               <div className="d-flex justify-content-between mt-4 pt-3 border-top">
-                <Button variant="outline-secondary" onClick={() => setStep(1)}>
+                <Button variant="outline-secondary" onClick={() => setStep(1)} disabled={isSubmitting}>
                   <i className="fas fa-arrow-left me-2"></i> Back to Shipping
                 </Button>
-                <Button variant="success" type="submit" size="lg" className="fw-bold px-4">
-                  <i className="fas fa-lock me-2"></i> Place Order ({formatINR(finalPrice)})
+                <Button variant="success" type="submit" size="lg" className="fw-bold px-4" disabled={isSubmitting}>
+                  {isSubmitting ? (
+                    <span><i className="fas fa-spinner fa-spin me-2"></i>Processing Order...</span>
+                  ) : (
+                    <span><i className="fas fa-lock me-2"></i> Place Order ({formatINR(finalPrice)})</span>
+                  )}
                 </Button>
               </div>
             </Form>

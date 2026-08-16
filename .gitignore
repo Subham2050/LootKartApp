@@ -13,6 +13,8 @@
 
 # Python
 __pycache__/
+backend/__pycache__/
+backend/**/__pycache__/
 *.py[cod]
 *$py.class
 *.so
@@ -30,7 +32,7 @@ backend/*.db
 backend/lootkart.db
 lootkart.db
 
-# Large dataset files
+# Large dataset & temporary files
 flipkart_fashion_products_dataset.json
 output.xlsx
 
