@@ -38,6 +38,7 @@ output.xlsx
 
 # Environment & Logs
 .env
+.env*
 .env.local
 .env.development.local
 .env.test.local
